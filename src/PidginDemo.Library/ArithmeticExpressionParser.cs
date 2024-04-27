@@ -4,6 +4,8 @@ using Pidgin.Expression;
 using PidginDemo.Library.Expressions;
 using static Pidgin.Parser;
 
+using BinaryOperatorParser = Pidgin.Parser<char, System.Func<PidginDemo.Library.Expressions.ArithmeticExpression, PidginDemo.Library.Expressions.ArithmeticExpression, PidginDemo.Library.Expressions.ArithmeticExpression>>;
+
 namespace PidginDemo.Library
 {
 	public static class ArithmeticExpressionParser
@@ -11,20 +13,17 @@ namespace PidginDemo.Library
 		private static readonly Parser<char, char> OpenParenthesisParser = TokenParser('(');
 		private static readonly Parser<char, char> CloseParenthesisParser = TokenParser(')');
 
-		private static readonly Parser<char, ArithmeticExpression> NumberParser = Map<char, double, ArithmeticExpression>(value => new NumberExpression(value), TokenParser(Real));
+		private static readonly Parser<char, ArithmeticExpression> NumberParser = Map(value => (ArithmeticExpression)new NumberExpression(value), TokenParser(Real));
 
-		// TODO: Can these parsers definitions be simplified?
-		private static readonly Parser<char, Func<ArithmeticExpression, ArithmeticExpression, ArithmeticExpression>> AdditionParser =
-			TokenParser('+').Select<Func<ArithmeticExpression, ArithmeticExpression, ArithmeticExpression>>(_ => (addend1, addend2) => new AdditionExpression(addend1, addend2));
+		private static readonly BinaryOperatorParser AdditionParser = BinaryOperatorParser('+', (addend1, addend2) => new AdditionExpression(addend1, addend2));
+		private static readonly BinaryOperatorParser SubtractionParser = BinaryOperatorParser('-', (minuend, subtrahend) => new SubtractionExpression(minuend, subtrahend));
+		private static readonly BinaryOperatorParser MultiplicationParser = BinaryOperatorParser('*', (multiplier, multiplicand) => new MultiplicationExpression(multiplier, multiplicand));
+		private static readonly BinaryOperatorParser DivisionParser = BinaryOperatorParser('/', (dividend, divisor) => new DivisionExpression(dividend, divisor));
 
-		private static readonly Parser<char, Func<ArithmeticExpression, ArithmeticExpression, ArithmeticExpression>> SubtractionParser =
-			TokenParser('-').Select<Func<ArithmeticExpression, ArithmeticExpression, ArithmeticExpression>>(_ => (minuend, subtrahend) => new SubtractionExpression(minuend, subtrahend));
-
-		private static readonly Parser<char, Func<ArithmeticExpression, ArithmeticExpression, ArithmeticExpression>> MultiplicationParser =
-			TokenParser('*').Select<Func<ArithmeticExpression, ArithmeticExpression, ArithmeticExpression>>(_ => (multiplier, multiplicand) => new MultiplicationExpression(multiplier, multiplicand));
-
-		private static readonly Parser<char, Func<ArithmeticExpression, ArithmeticExpression, ArithmeticExpression>> DivisionParser =
-			TokenParser('/').Select<Func<ArithmeticExpression, ArithmeticExpression, ArithmeticExpression>>(_ => (dividend, divisor) => new DivisionExpression(dividend, divisor));
+		private static BinaryOperatorParser BinaryOperatorParser(char operatorChar, Func<ArithmeticExpression, ArithmeticExpression, ArithmeticExpression> expressionFactory)
+		{
+			return TokenParser(operatorChar).Select(_ => expressionFactory);
+		}
 
 		private static readonly Parser<char, ArithmeticExpression> ExpressionParser =
 			Pidgin.Expression.ExpressionParser.Build<char, ArithmeticExpression>(
